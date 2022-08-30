@@ -1,4 +1,4 @@
-/* Happy_RC_Receiver(version 6a) *****************************
+/* Happy_RC_Receiver(version 6b) *****************************
   Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
@@ -64,6 +64,8 @@ unsigned long t2 = 0; //割り込み時の時間
 unsigned long td = 0; //データ受信時間と割り込み時間の差
 unsigned long t_loss_ST = 0; //ステア操作で失われた時間
 unsigned long t_loss_TH = 0; //スロットル操作で失われた時間
+unsigned long prev=0;
+unsigned long interval=10;
 
 /*Bluetooth通信に必要*/
 BluetoothSerial ESP_BT; //ESP_BTという名前でオブジェクトを定義
@@ -78,43 +80,72 @@ void IRAM_ATTR onTimer() {
 unsigned long change_ST_pos(int start_pos, int goal_pos, int mov_speed) {
   int i; //カウンタ変数
   int loss_time; //delayの分遅れた時間
+  int delay_time = 50 - mov_speed; //処理を遅くする時間（この値が大きいとゆっくりな操作に）
+  static unsigned char count=0;
+  static unsigned long millis_buf = 0;
+ 
+
 
   /*ステアを切る処理*/
   //右折
   if (goal_pos - start_pos > 0) {
-    for (i = start_pos; i < goal_pos; i++) {
-      delay(50 - mov_speed);
-      myservo.write(i);
-    }
-    //左折
-  } else if (goal_pos - start_pos < 0) {
-    for (i = start_pos; i > goal_pos; i--) {
-      delay(50 - mov_speed);
-      myservo.write(i);
-    }
-    //その他→ステアはそのまま
-  } else {
-    myservo.write(start_pos);
-  }
-  CH1 = goal_pos; //現在のステア位置を更新
-  return loss_time = i *(50- mov_speed); //処理にかかった時間を返す
+      CH1=start_pos+1;
+      myservo.write(CH1);
+//      // 現在の経過時間
+//      while ((millis() - millis_buf) < delay_time) {
+//        ;
+//      }
+//      // 上の待機から抜けた時間を保存する
+//      millis_buf = millis();
+//      // カウントを取る
+//      count++;
+//      // カウントを1で割った余りがゼロとなったときに処理（ここを通るたびに処理がされる）
+//      if (count % 1 == 0) {
+//        myservo.write(i);
+//      }
+//    }
+  //左折
+} else if (goal_pos - start_pos < 0) {
+    CH1=start_pos-1;
+     myservo.write(CH1);
+//      // 現在の経過時間
+//      while ((millis() - millis_buf) < delay_time) {
+//        ;
+//      }
+//      // 上の待機から抜けた時間を保存する
+//      millis_buf = millis();
+//      // カウントを取る
+//      count++;
+//      // カウントを1で割った余りがゼロとなったときに処理（ここを通るたびに処理がされる）
+//      if (count % 1 == 0) {
+//        myservo.write(i);
+//      }
+//  }
+  //その他→ステアはそのまま
+} else {
+  myservo.write(start_pos);
+}
+
+//CH1 = goal_pos; //現在のステア位置を更新
+return loss_time = i * delay_time; //処理にかかった時間を返す
 }
 
 unsigned long change_TH_pos(int start_pos, int goal_pos, int mov_speed) {
   int i; //カウンタ変数
   int loss_time; //delayの分遅れた時間
+  int delay_time = 50 - mov_speed; //処理を遅くする時間（この値が大きいとゆっくりな操作に）
 
   /*スロットルを操作する処理*/
   //加速
   if (goal_pos - start_pos > 0) {
     for (i = start_pos; i < goal_pos; i++) {
-      delay(50 - mov_speed);
+      delay(delay_time);
       myesc.write(i);
     }
     //減速またはバック
   } else if (goal_pos - start_pos < 0) {
     for (i = start_pos; i > goal_pos; i--) {
-      delay(50 - mov_speed);
+      delay(delay_time);
       myesc.write(i);
     }
     //その他→スロットルはそのまま
@@ -122,7 +153,7 @@ unsigned long change_TH_pos(int start_pos, int goal_pos, int mov_speed) {
     myesc.write(start_pos);
   }
   CH2 = goal_pos; //現在のスロットル位置を更新
-  return loss_time = i *(50- mov_speed); //処理にかかった時間を返す
+  return loss_time = i * (delay_time); //処理にかかった時間を返す
 }
 
 void setup() {
@@ -145,11 +176,12 @@ void setup() {
 }
 
 void loop() {
-
+  unsigned long curr = millis(); /*現在時刻を取得*/
   /*available()で受信した信号があるか確認*/
   if (ESP_BT.available()) {
     t1 = millis(); //データを取得した時間を記録
     input = ESP_BT.read(); //受信したテキストを変数inputに保存
+  }
 
     /*Pボタンが押されたらラジコンの操作を有効する（安全のため）*/
     if (flag == 1 && input == 'C') {
@@ -161,39 +193,68 @@ void loop() {
 
       /*命令に基づいてラジコンを制御*/
       if (input == 'A') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, center_pos, mov_speed_ST); // ステアを中心(Center)に
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
       } else if (input == 'B') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, center_pos, mov_speed_ST); // ステアを中心(Center)に
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
       } else if (input == 'C') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, center_pos, mov_speed_ST); // ステアを中心(Center)に
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
       } else if (input == 'D') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, left_max, mov_speed_ST); // ステアを左(Left)に切る
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
       } else if (input == 'E') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, right_max, mov_speed_ST); // ステアを右(Right)に切る
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
       } else if (input == 'F') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, left_max, mov_speed_ST); // ステアを左(Left)に切る
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
       } else if (input == 'G') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, right_max, mov_speed_ST); // ステアを右(Right)に切る
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
       } else if (input == 'H') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, left_max, mov_speed_ST); // ステアを左(Left)に切る
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
       } else if (input == 'I') {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, right_max, mov_speed_ST); // ステアを右(Right)に切る
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
       } else {
+        if((curr-prev)>=interval){
         t_loss_ST = change_ST_pos(CH1, center_pos, 0); // ステアを中心(Center)に
+        prev=curr; //前回に処理を実行した時刻を現在時刻に更新
+        }
         t_loss_TH = change_TH_pos(CH2, neutral_pos, 0); //中立(Neutral)
       }
     }
 
-  }
 
   /*シリアルモニタで確認用（ラジコンの制御には無関係）*/
   Serial.print("Received signal=");
@@ -210,7 +271,7 @@ void loop() {
   Serial.print(",");
 
   /*アプリがバックグラウンドに入ったとき（もしくは閉じたとき）、車体を停止させる処理（安全のため）*/
-  if (td > 150 + t_loss_ST + t_loss_TH) {
+  if (td > 150) {
     Serial.print("Transmitter is NOT active"); //NOT active：アプリはバックグラウンド状態（もしく閉じている）
     Serial.print("\n");
     myservo.write(center_pos); // ステアを中心(Center)に
