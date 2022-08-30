@@ -17,11 +17,7 @@
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第2回-RCサーボ用の電源回路追加]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/03/12/)
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第3回-ESCを使ったモータ駆動＆スマホ向けコントローラアプリ試作]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/03/15/)
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第4回-操作性の向上]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/20/)
+* [Bluetooth モジュールでRCサーボ・ESCを制御したい [第5回-安全性の向上]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/30/)
 
 # Installation
-導入手順は以下の通りです。
-1. このレポジトリにあるHappy_RC_Driver.apkをスマートフォン（Android）にインストール
-2. このレポジトリにあるHappy_RC_Receiver.inoをESP32（WROOM-32D,E推奨）に書き込む
-3. RCサーボとESCをESP32に接続
-
-手順3の接続方法については後日公開する予定です。今しばらくお待ちください。
+　導入手順は[こちら](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/30/)をご覧ください。
