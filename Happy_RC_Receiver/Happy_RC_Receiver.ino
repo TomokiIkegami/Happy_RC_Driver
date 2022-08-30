@@ -2,19 +2,22 @@
   Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
-  # 動作
+  ◆ 動作
   1.スマホアプリ(Happy_RC_Receiver)から命令（'A'～'I'）を取得
   2.取得した命令に基づいて、RCを前後左右に操作
-  # 機能
+  ◆ 機能
   ・アプリを開いていないときは、車体を停止させる安全機能を装備（Dragブレーキ付きESCを使用すること）
   ・アプリ再起動時には、走行停止ボタン（画面中央のPボタン）を押さないと走行しない（アプリ再起動時に急に走行する危険を防ぐため）
+
+  ◆ 補足
+  ・プログラム中で★マークがついている部分は、自分の装置に合わせて調整してください。
 *************************************************************/
 
 /*ハードウェアの接続ピンの設定*/
 #define LED_PIN 2 //走行には無関係。2番ピンにLEDのアノード(+)を接続すると割り込み処理の間隔(100ms)でLEDが点滅
-#define LED_PIN_ACTIVE 17 //走行には無関係。172番ピンにLEDのアノード(+)を接続すると、アプリ起動時のみLEDが点灯
-#define SERVO_PWM_PIN 4 //サーボモータのPWMピン（信号入力ピン）をESP32の4番ピンに接続
-#define ESC_PWM_PIN 16 //ESCのPWMピン（信号入力ピン）をESP32の16番ピンに接続
+#define LED_PIN_ACTIVE 17 //走行には無関係。17番ピンにLEDのアノード(+)を接続すると、アプリ起動時のみLEDが点灯
+#define SERVO_PWM_PIN 4 //サーボモータのPWMピン（信号入力ピン）をESP32の4番ピンに接続 ★回路と対応した番号にする
+#define ESC_PWM_PIN 16 //ESCのPWMピン（信号入力ピン）をESP32の16番ピンに接続 ★回路と対応した番号にする
 
 /*タイマーの定義*/
 hw_timer_t*timer = NULL;
@@ -29,17 +32,17 @@ Servo myesc;    // ESCを制御するためのServoオブジェクト作成
 
 /* ステアリングの設定 */
 int center_pos = 93; //ステア中心位置 [サーボモータの中心位置 (90°)]　★まっすぐ走るように調整。90より大きい値にするとステア（ハンドル）が右寄りに、90より小さい値にするとステア（ハンドル）が左寄りになる
-int left_DR = 20; //左の切れ角
-int right_DR = 25; //右の切れ角
-int left_max = center_pos - left_DR; //左ステアの最大位置 [中心位置より反時計回りに20°（left_DR）回転した位置]
-int right_max = center_pos + right_DR; //右ステアの最大位置 [中心位置より時計回りに25°（right_DR）回転した位置]
+int left_DR = 20; //左の切れ角 ★:好みに合わせて調整。ただし大きくしすぎないように注意。
+int right_DR = 25; //右の切れ角 ★:好みに合わせて調整。ただし大きくしすぎないように注意。
+int left_max = center_pos - left_DR; //左ステアの最大位置 [中心位置より反時計回りに20°（left_DR）回転した位置] ★逆に動くときはleft_DRの手前の符号をプラス（+）に
+int right_max = center_pos + right_DR; //右ステアの最大位置 [中心位置より時計回りに25°（right_DR）回転した位置] ★逆に動くときはright_DRの手前の符号をマイナス（-）に
 
 /* スロットルの設定 */
 int neutral_pos = 91; //中立位置 [スロットルの中立位置 (90) ★ESCの設定によってずれがあるので、前後に走行しないよう値を調整する。※ ESC側を90で中立になるよう設定（上級者向け。ESCの説明書通りプロポでニュートラル設定を済ませてから、このプログラムの値を調整するのがオススメ）してもよい。]
-int forward_DR = 20; //前進の速さ
-int backward_DR = 20; //バックの速さ
-int forward_max = neutral_pos + forward_DR; //前進の最大位置
-int backward_max = neutral_pos - backward_DR; //バックの最大位置
+int forward_DR = 20; //前進の速さ ★好みの速度に調整
+int backward_DR = 20; //バックの速さ ★好みの速度に調整
+int forward_max = neutral_pos + forward_DR; //前進の最大位置 ★逆に動くときはforward_DRの手前の符号をマイナス（-）に
+int backward_max = neutral_pos - backward_DR; //バックの最大位置 ★逆に動くときはbackward_DRの手前の符号をプラス（+）に
 
 /*プログラムの流れを制御する変数*/
 int flag = 0; //アプリの起動状態を管理する変数。アプリがバックグラウンドに入ったときは1に設定する。アプリがバックグラウンドから復帰し、アプリのPボタンが押されたら0に設定してラジコン操作を有効にする。
@@ -64,9 +67,9 @@ void IRAM_ATTR onTimer() {
 void setup() {
   pinMode(LED_PIN_ACTIVE, OUTPUT); //LEDの点灯ピンを出力用に設定
   Serial.begin(115200); //シリアルモニタで確認用
-  ESP_BT.begin("ESP32_RC_Receiver"); //接続画面で表示される名前を設定
-  myservo.attach(SERVO_PWM_PIN); //サーボモータのPWM端子とArduinoの4番ピンを接続
-  myesc.attach(ESC_PWM_PIN); //ESCのPWM端子とArduinoの16番ピンを接続
+  ESP_BT.begin("ESP32_RC_Receiver"); //接続画面で表示される名前を設定 ★好きな名前にしてよい
+  myservo.attach(SERVO_PWM_PIN); //サーボモータのPWM端子とArduinoの4番ピンを接続 ★回路と対応した番号にする
+  myesc.attach(ESC_PWM_PIN); //ESCのPWM端子とArduinoの16番ピンを接続 ★回路と対応した番号にする
 
   /*勝手には走りださないように設定*/
   myservo.write(center_pos); // ステアを中心(Center)に
