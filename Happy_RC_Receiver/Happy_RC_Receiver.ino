@@ -31,7 +31,7 @@ Servo myservo;    // サーボモータを制御するためのServoオブジェ
 Servo myesc;    // ESCを制御するためのServoオブジェクト作成
 
 /* ステアリングの設定 */
-int mov_speed_ST = 10; //ステア移動速度
+int mov_speed_ST = 40; //ステア移動速度
 int center_pos = 93; //ステア中心位置 [サーボモータの中心位置 (90°)]　★まっすぐ走るように調整。90より大きい値にするとステア（ハンドル）が右寄りに、90より小さい値にするとステア（ハンドル）が左寄りになる
 int left_DR = 20; //左の切れ角 ★:好みに合わせて調整。ただし大きくしすぎないように注意。
 int right_DR = 25; //右の切れ角 ★:好みに合わせて調整。ただし大きくしすぎないように注意。
@@ -39,20 +39,22 @@ int left_max = center_pos - left_DR; //左ステアの最大位置 [中心位置
 int right_max = center_pos + right_DR; //右ステアの最大位置 [中心位置より時計回りに25°（right_DR）回転した位置] ★逆に動くときはright_DRの手前の符号をマイナス（-）に
 
 /* スロットルの設定 */
-int mov_speed_TH = 50; //スロットル移動速度
+int mov_speed_TH = 0; //スロットル移動速度
+int mov_speed_brk = 40; //ブレーキ速度
 int neutral_pos = 91; //中立位置 [スロットルの中立位置 (90) ★ESCの設定によってずれがあるので、前後に走行しないよう値を調整する。※ ESC側を90で中立になるよう設定（上級者向け。ESCの説明書通りプロポでニュートラル設定を済ませてから、このプログラムの値を調整するのがオススメ）してもよい。]
 int forward_DR = 20; //前進の速さ ★好みの速度に調整
 int backward_DR = 20; //バックの速さ ★好みの速度に調整
 int forward_max = neutral_pos + forward_DR; //前進の最大位置 ★逆に動くときはforward_DRの手前の符号をマイナス（-）に
 int backward_max = neutral_pos - backward_DR; //バックの最大位置 ★逆に動くときはbackward_DRの手前の符号をプラス（+）に
 
-//速度(mov_speed_ST,mov_speed_TH)は 1~255 の範囲で与える。（0にすると最大速度で移動）
+/*値設定の注意点*/
+//速度(mov_speed_ST,mov_speed_TH)は 0-50 の範囲で与える。（0：最低速度、50:最大速度）
 //スロットル、サーボモータの値(pos)の範囲は、 0≦ pos ≦180 で与える。
 //myservo.write 関数には回転角を絶対的な位置で与える。例) 90°から 45°反時計回りに動いてほしいときは、-45ではなく、45を関数に入力する。
 
 /*ステアとスロットルの位置を記憶する変数*/
-int CH1=center_pos;
-int CH2=neutral_pos;
+int CH1 = center_pos;
+int CH2 = neutral_pos;
 
 /*プログラムの流れを制御する変数*/
 int flag = 0; //アプリの起動状態を管理する変数。アプリがバックグラウンドに入ったときは1に設定する。アプリがバックグラウンドから復帰し、アプリのPボタンが押されたら0に設定してラジコン操作を有効にする。
@@ -61,7 +63,7 @@ unsigned long t1 = 0; //データ受信時間
 unsigned long t2 = 0; //割り込み時の時間
 unsigned long td = 0; //データ受信時間と割り込み時間の差
 unsigned long t_loss_ST = 0; //ステア操作で失われた時間
-unsigned long t_loss_TH = 0; //操作でスロットル操作で失われた時間
+unsigned long t_loss_TH = 0; //スロットル操作で失われた時間
 
 /*Bluetooth通信に必要*/
 BluetoothSerial ESP_BT; //ESP_BTという名前でオブジェクトを定義
@@ -73,45 +75,55 @@ void IRAM_ATTR onTimer() {
   td = t2 - t1; //割り込み時の時間と命令取得時間の差を取る。この差が大きいとき、アプリは起動していない状態。
 }
 
-unsigned long change_ST_pos(int start_pos,int goal_pos,int mov_speed){
+unsigned long change_ST_pos(int start_pos, int goal_pos, int mov_speed) {
   int i; //カウンタ変数
   int loss_time; //delayの分遅れた時間
-  if(goal_pos-start_pos>0){
-    for(i=start_pos;i<goal_pos;i++){
-      delay(mov_speed);
-      myservo.write(i); 
-      }
-    }else if(goal_pos-start_pos<0){
-    for(i=start_pos;i>goal_pos;i--){      
-      delay(mov_speed);
-      myservo.write(i); 
-      }
-  }else{
-      myservo.write(start_pos); 
-    }
-  CH1=goal_pos; //現在のステア位置を更新
-  return loss_time=i*mov_speed;
-  }
 
-unsigned long change_TH_pos(int start_pos,int goal_pos,int mov_speed){
+  /*ステアを切る処理*/
+  //右折
+  if (goal_pos - start_pos > 0) {
+    for (i = start_pos; i < goal_pos; i++) {
+      delay(50 - mov_speed);
+      myservo.write(i);
+    }
+    //左折
+  } else if (goal_pos - start_pos < 0) {
+    for (i = start_pos; i > goal_pos; i--) {
+      delay(50 - mov_speed);
+      myservo.write(i);
+    }
+    //その他→ステアはそのまま
+  } else {
+    myservo.write(start_pos);
+  }
+  CH1 = goal_pos; //現在のステア位置を更新
+  return loss_time = i *(50- mov_speed); //処理にかかった時間を返す
+}
+
+unsigned long change_TH_pos(int start_pos, int goal_pos, int mov_speed) {
   int i; //カウンタ変数
   int loss_time; //delayの分遅れた時間
-  if(goal_pos-start_pos>0){
-    for(i=start_pos;i<goal_pos;i++){
-      delay(mov_speed);
-      myesc.write(i); 
-      }
-    }else if(goal_pos-start_pos<0){
-    for(i=start_pos;i>goal_pos;i--){      
-      delay(mov_speed);
-      myesc.write(i); 
-      }
-  }else{
-      myservo.write(start_pos); 
+
+  /*スロットルを操作する処理*/
+  //加速
+  if (goal_pos - start_pos > 0) {
+    for (i = start_pos; i < goal_pos; i++) {
+      delay(50 - mov_speed);
+      myesc.write(i);
     }
-  CH2=goal_pos; //現在のステア位置を更新
-  return loss_time=i*mov_speed;
+    //減速またはバック
+  } else if (goal_pos - start_pos < 0) {
+    for (i = start_pos; i > goal_pos; i--) {
+      delay(50 - mov_speed);
+      myesc.write(i);
+    }
+    //その他→スロットルはそのまま
+  } else {
+    myesc.write(start_pos);
   }
+  CH2 = goal_pos; //現在のスロットル位置を更新
+  return loss_time = i *(50- mov_speed); //処理にかかった時間を返す
+}
 
 void setup() {
   pinMode(LED_PIN_ACTIVE, OUTPUT); //LEDの点灯ピンを出力用に設定
@@ -138,7 +150,6 @@ void loop() {
   if (ESP_BT.available()) {
     t1 = millis(); //データを取得した時間を記録
     input = ESP_BT.read(); //受信したテキストを変数inputに保存
-    //Serial.println(input); //受信したテキストをシリアルモニタに表示
 
     /*Pボタンが押されたらラジコンの操作を有効する（安全のため）*/
     if (flag == 1 && input == 'C') {
@@ -150,35 +161,35 @@ void loop() {
 
       /*命令に基づいてラジコンを制御*/
       if (input == 'A') {
-        t_loss_ST=change_ST_pos(CH1,center_pos,mov_speed_ST); // ステアを中心(Center)に
-        myesc.write(forward_max);  //前進(Forward)
+        t_loss_ST = change_ST_pos(CH1, center_pos, mov_speed_ST); // ステアを中心(Center)に
+        t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
       } else if (input == 'B') {
-        t_loss_ST=change_ST_pos(CH1,center_pos,mov_speed_ST); // ステアを中心(Center)に
-        myesc.write(backward_max);  //後退(Backward)
+        t_loss_ST = change_ST_pos(CH1, center_pos, mov_speed_ST); // ステアを中心(Center)に
+        t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
       } else if (input == 'C') {
-        t_loss_ST=change_ST_pos(CH1,center_pos,mov_speed_ST); // ステアを中心(Center)に
-        myesc.write(neutral_pos);  //中立(Neutral)
+        t_loss_ST = change_ST_pos(CH1, center_pos, mov_speed_ST); // ステアを中心(Center)に
+        t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
       } else if (input == 'D') {
-        t_loss_ST=change_ST_pos(CH1,left_max,mov_speed_ST); // ステアを左(Left)に切る
-        myesc.write(neutral_pos);  //中立(Neutral)
+        t_loss_ST = change_ST_pos(CH1, left_max, mov_speed_ST); // ステアを左(Left)に切る
+        t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
       } else if (input == 'E') {
-        t_loss_ST=change_ST_pos(CH1,right_max,mov_speed_ST); // ステアを右(Right)に切る
-        myesc.write(neutral_pos);  //中立(Neutral)
+        t_loss_ST = change_ST_pos(CH1, right_max, mov_speed_ST); // ステアを右(Right)に切る
+        t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
       } else if (input == 'F') {
-        t_loss_ST=change_ST_pos(CH1,left_max,mov_speed_ST); // ステアを左(Left)に切る
-        myesc.write(forward_max);  //前進(Forward)
+        t_loss_ST = change_ST_pos(CH1, left_max, mov_speed_ST); // ステアを左(Left)に切る
+        t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
       } else if (input == 'G') {
-        t_loss_ST=change_ST_pos(CH1,right_max,mov_speed_ST); // ステアを右(Right)に切る
-        myesc.write(forward_max);  //前進(Forward)
+        t_loss_ST = change_ST_pos(CH1, right_max, mov_speed_ST); // ステアを右(Right)に切る
+        t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
       } else if (input == 'H') {
-        t_loss_ST=change_ST_pos(CH1,left_max,mov_speed_ST); // ステアを左(Left)に切る
-        myesc.write(backward_max);  //後退(Backward)
+        t_loss_ST = change_ST_pos(CH1, left_max, mov_speed_ST); // ステアを左(Left)に切る
+        t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
       } else if (input == 'I') {
-        t_loss_ST=change_ST_pos(CH1,right_max,mov_speed_ST); // ステアを右(Right)に切る
-        myesc.write(backward_max);  //後退(Backward)
+        t_loss_ST = change_ST_pos(CH1, right_max, mov_speed_ST); // ステアを右(Right)に切る
+        t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
       } else {
-        t_loss_ST=change_ST_pos(CH1,center_pos,mov_speed_ST); // ステアを中心(Center)に
-        myesc.write(neutral_pos);  //中立(Neutral)
+        t_loss_ST = change_ST_pos(CH1, center_pos, 0); // ステアを中心(Center)に
+        t_loss_TH = change_TH_pos(CH2, neutral_pos, 0); //中立(Neutral)
       }
     }
 
@@ -199,7 +210,7 @@ void loop() {
   Serial.print(",");
 
   /*アプリがバックグラウンドに入ったとき（もしくは閉じたとき）、車体を停止させる処理（安全のため）*/
-  if (td > 150+t_loss_ST) {
+  if (td > 150 + t_loss_ST + t_loss_TH) {
     Serial.print("Transmitter is NOT active"); //NOT active：アプリはバックグラウンド状態（もしく閉じている）
     Serial.print("\n");
     myservo.write(center_pos); // ステアを中心(Center)に
