@@ -39,8 +39,8 @@ int left_max = center_pos - left_DR; //左ステアの最大位置 [中心位置
 int right_max = center_pos + right_DR; //右ステアの最大位置 [中心位置より時計回りに25°（right_DR）回転した位置] ★逆に動くときはright_DRの手前の符号をマイナス（-）に
 
 /* スロットルの設定 */
-int mov_speed_TH = 0; //スロットル移動速度
-int mov_speed_brk = 40; //ブレーキ速度
+unsigned long mov_speed_TH = 0; //スロットル移動速度
+unsigned long mov_speed_brk = 40; //ブレーキ速度
 int neutral_pos = 91; //中立位置 [スロットルの中立位置 (90) ★ESCの設定によってずれがあるので、前後に走行しないよう値を調整する。※ ESC側を90で中立になるよう設定（上級者向け。ESCの説明書通りプロポでニュートラル設定を済ませてから、このプログラムの値を調整するのがオススメ）してもよい。]
 int forward_DR = 20; //前進の速さ ★好みの速度に調整
 int backward_DR = 20; //バックの速さ ★好みの速度に調整
@@ -65,7 +65,8 @@ unsigned long td = 0; //データ受信時間と割り込み時間の差
 unsigned long t_loss_ST = 0; //ステア操作で失われた時間
 unsigned long t_loss_TH = 0; //スロットル操作で失われた時間
 unsigned long curr ; /*現在時刻を取得*/
-unsigned long prev = 0;
+unsigned long prev_ST = 0;
+unsigned long prev_TH = 0;
 unsigned long interval = 10;
 
 /*Bluetooth通信に必要*/
@@ -81,7 +82,7 @@ void IRAM_ATTR onTimer() {
 void change_ST_pos(int goal_pos, unsigned long mov_speed) {
   unsigned long delay_time = 50 - mov_speed; //処理を遅くする時間（この値が大きいとゆっくりな操作に）
 
-  if ((curr - prev) >= delay_time) {
+  if ((curr - prev_ST) >= delay_time) {
     /*ステアを切る処理*/
     //右折
     if (goal_pos - CH1 > 0) {
@@ -96,35 +97,31 @@ void change_ST_pos(int goal_pos, unsigned long mov_speed) {
     } else {
       myservo.write(CH1);
     }
-    prev = curr; //前回に処理を実行した時刻を現在時刻に更新
+    prev_ST = curr; //前回に処理を実行した時刻を現在時刻に更新
   }
 
 }
 
-unsigned long change_TH_pos(int start_pos, int goal_pos, int mov_speed) {
-  int i; //カウンタ変数
-  int loss_time; //delayの分遅れた時間
-  int delay_time = 50 - mov_speed; //処理を遅くする時間（この値が大きいとゆっくりな操作に）
+void change_TH_pos(int goal_pos, unsigned long mov_speed) {
+  unsigned long delay_time = 50 - mov_speed; //処理を遅くする時間（この値が大きいとゆっくりな操作に）
 
-  /*スロットルを操作する処理*/
-  //加速
-  if (goal_pos - start_pos > 0) {
-    for (i = start_pos; i < goal_pos; i++) {
-      delay(delay_time);
-      myesc.write(i);
+  if ((curr - prev_TH) >= delay_time) {
+    /*ステアを切る処理*/
+    //右折
+    if (goal_pos - CH2 > 0) {
+      CH2++;
+      myesc.write(CH2);
+      //左折
+    } else if (goal_pos - CH2 < 0) {
+      CH2--;
+      myesc.write(CH2);
+
+      //その他→ステアはそのまま
+    } else {
+      myesc.write(CH2);
     }
-    //減速またはバック
-  } else if (goal_pos - start_pos < 0) {
-    for (i = start_pos; i > goal_pos; i--) {
-      delay(delay_time);
-      myesc.write(i);
-    }
-    //その他→スロットルはそのまま
-  } else {
-    myesc.write(start_pos);
+    prev_TH = curr; //前回に処理を実行した時刻を現在時刻に更新
   }
-  CH2 = goal_pos; //現在のスロットル位置を更新
-  return loss_time = i * (delay_time); //処理にかかった時間を返す
 }
 
 void setup() {
@@ -165,35 +162,34 @@ void loop() {
     /*命令に基づいてラジコンを制御*/
     if (input == 'A') {
       change_ST_pos(center_pos, mov_speed_ST); // ステアを中心(Center)に
-      t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
+      change_TH_pos(forward_max, mov_speed_TH); //前進(Forward)
     } else if (input == 'B') {
       change_ST_pos(center_pos, mov_speed_ST); // ステアを中心(Center)に
-      t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
+      change_TH_pos(backward_max, mov_speed_TH); //後退(Backward)
     } else if (input == 'C') {
       change_ST_pos(center_pos, mov_speed_ST); // ステアを中心(Center)に
-      t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
+      change_TH_pos(neutral_pos, mov_speed_brk); //中立(Neutral)
     } else if (input == 'D') {
       change_ST_pos(left_max, mov_speed_ST); // ステアを左(Left)に切る
-      t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
+      change_TH_pos(neutral_pos, mov_speed_brk); //中立(Neutral)
     } else if (input == 'E') {
       change_ST_pos(right_max, mov_speed_ST); // ステアを右(Right)に切る
-      t_loss_TH = change_TH_pos(CH2, neutral_pos, mov_speed_brk); //中立(Neutral)
+      change_TH_pos(neutral_pos, mov_speed_brk); //中立(Neutral)
     } else if (input == 'F') {
       change_ST_pos(left_max, mov_speed_ST); // ステアを左(Left)に切る
-      t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
+      change_TH_pos(forward_max, mov_speed_TH); //前進(Forward)
     } else if (input == 'G') {
       change_ST_pos(right_max, mov_speed_ST); // ステアを右(Right)に切る
-      prev = curr; //前回に処理を実行した時刻を現在時刻に更新
-      t_loss_TH = change_TH_pos(CH2, forward_max, mov_speed_TH); //前進(Forward)
+      change_TH_pos(forward_max, mov_speed_TH); //前進(Forward)
     } else if (input == 'H') {
       change_ST_pos(left_max, mov_speed_ST); // ステアを左(Left)に切る
-      t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
+      change_TH_pos(backward_max, mov_speed_TH); //後退(Backward)
     } else if (input == 'I') {
       change_ST_pos(right_max, mov_speed_ST); // ステアを右(Right)に切る
-      t_loss_TH = change_TH_pos(CH2, backward_max, mov_speed_TH); //後退(Backward)
+      change_TH_pos(backward_max, mov_speed_TH); //後退(Backward)
     } else {
       change_ST_pos(center_pos, 50); // ステアを中心(Center)に
-      t_loss_TH = change_TH_pos(CH2, neutral_pos, 50); //中立(Neutral)
+      change_TH_pos(neutral_pos, 50); //中立(Neutral)
     }
   }
 
