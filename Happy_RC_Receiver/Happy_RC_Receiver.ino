@@ -1,4 +1,4 @@
-/* Happy_RC_Receiver(version 6b) *****************************
+/* Happy_RC_Receiver(version 6c) *****************************
   Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
