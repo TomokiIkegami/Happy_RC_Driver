@@ -117,7 +117,7 @@ void change_TH_pos(int goal_pos, unsigned long mov_speed) {
       CH2--;
       myesc.write(CH2);
 
-      //その他→スロットルを中立に
+      //その他→スロットルはそのまま
     } else {
       myesc.write(CH2);
     }
