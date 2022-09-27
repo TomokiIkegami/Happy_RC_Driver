@@ -18,6 +18,7 @@
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第3回-ESCを使ったモータ駆動＆スマホ向けコントローラアプリ試作]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/03/15/)
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第4回-操作性の向上]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/20/)
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第5回-安全性の向上]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/30/)
+* [Bluetooth モジュールでRCサーボ・ESCを制御したい [第6回-動きを滑らかに]](https://tomokiikegami.github.io/Happy_RC.github.io/2022/09/27/)
 
 # Installation
 　導入手順は[こちら](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/30/)をご覧ください。
