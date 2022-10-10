@@ -9,6 +9,7 @@
   ・アプリを開いていないときは、車体を停止させる安全機能を装備（Dragブレーキ付きESCを使用すること）
   ・アプリ再起動時には、走行停止ボタン（画面中央のPボタン）を押さないと走行しない（アプリ再起動時に急に走行する危険を防ぐため）
   ・カクカクではなく滑らかな走行が可能に
+  ・速度の切り替えが可能に（2種類の速度）
   ◆ 補足
   ・プログラム中で★マークがついている部分は、自分の装置に合わせて調整
 *************************************************************/
@@ -170,6 +171,7 @@ void loop() {
       change_ST_pos(center_pos, mov_speed_ST); // ステアを中心(Center)に
       change_TH_pos(backward_max, mov_speed_TH); //後退(Backward)
     } else if (input == 'C') {
+      forward_max = neutral_pos + forward_DR; //標準の速度に設定
       change_ST_pos(center_pos, mov_speed_ST); // ステアを中心(Center)に
       change_TH_pos(neutral_pos, mov_speed_brk); //中立(Neutral)
     } else if (input == 'D') {
