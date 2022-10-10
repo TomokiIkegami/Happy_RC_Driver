@@ -46,6 +46,7 @@ int forward_DR = 20; //前進の速さ ★好みの速度に調整
 int backward_DR = 20; //バックの速さ ★好みの速度に調整
 int forward_max = neutral_pos + forward_DR; //前進の最大位置 ★逆に動くときはforward_DRの手前の符号をマイナス（-）に
 int backward_max = neutral_pos - backward_DR; //バックの最大位置 ★逆に動くときはbackward_DRの手前の符号をプラス（+）に
+int turbo_speed = 180; //全開走行時の速度（180が最大。速すぎると思ったら170や160など値を小さくしてみる）
 
 /*値設定の注意点*/
 //速度(mov_speed_ST,mov_speed_TH)は 0-50 の範囲で与える。（0：最低速度、50:最大速度）
@@ -58,6 +59,7 @@ int CH2 = neutral_pos; //CH2:スロットル
 
 /*プログラムの流れを制御する変数*/
 int flag = 0; //アプリの起動状態を管理する変数。アプリがバックグラウンドに入ったときは1に設定する。アプリがバックグラウンドから復帰し、アプリのPボタンが押されたら0に設定してラジコン操作を有効にする。
+int turbo_flag = 0; //ターボ有効時には1に設定
 char input = 'C'; //入力信号
 unsigned long t1 = 0; //データ受信時間
 unsigned long t2 = 0; //割り込み時の時間
@@ -188,6 +190,12 @@ void loop() {
     } else if (input == 'I') {
       change_ST_pos(right_max, mov_speed_ST); // ステアを右(Right)に切る
       change_TH_pos(backward_max, mov_speed_TH); //後退(Backward)
+    } else if (input == 'J') {
+      forward_max = turbo_speed; //ターボの速度に設定
+      change_TH_pos(forward_max, mov_speed_TH); //前進(Forward)
+    } else if (input == 'K') {
+      forward_max = neutral_pos + forward_DR; //標準の速度に設定
+      change_TH_pos(forward_max, mov_speed_TH); //前進(Forward)      
     } else {
       change_ST_pos(center_pos, 50); // ステアを中心(Center)に
       change_TH_pos(neutral_pos, 50); //中立(Neutral)
