@@ -1,4 +1,4 @@
-/* Happy_RC_Receiver(version 6c) *****************************
+/* Happy_RC_Receiver(version 6d) *****************************
   Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
@@ -25,15 +25,19 @@ hw_timer_t*timer = NULL;
 
 /*ライブラリ*/
 #include "BluetoothSerial.h" //ESP32のBluetooth通信に使用
-#include <Servo.h>　//サーボモータの制御に使用
+#include <ESP32Servo.h> //サーボモータの制御に使用
 
 /*ESC,サーボのオブジェクト作成*/
 Servo myservo;    // サーボモータを制御するためのServoオブジェクト作成
 Servo myesc;    // ESCを制御するためのServoオブジェクト作成
 
+int pulsew_min=500; //minimum pulse width of servo motor
+int pulsew_max=2400; //maximum pulse width of servo motor
+
+
 /* ステアリングの設定 */
 unsigned long mov_speed_ST = 40; //ステア移動速度
-int center_pos = 93; //ステア中心位置 [サーボモータの中心位置 (90°)]　★まっすぐ走るように調整。90より大きい値にするとステア（ハンドル）が右寄りに、90より小さい値にするとステア（ハンドル）が左寄りになる
+int center_pos = 95; //ステア中心位置 [サーボモータの中心位置 (90°)]　★まっすぐ走るように調整。90より大きい値にするとステア（ハンドル）が右寄りに、90より小さい値にするとステア（ハンドル）が左寄りになる
 int left_DR = 20; //左の切れ角 ★:好みに合わせて調整。ただし大きくしすぎないように注意。
 int right_DR = 25; //右の切れ角 ★:好みに合わせて調整。ただし大きくしすぎないように注意。
 int left_max = center_pos - left_DR; //左ステアの最大位置 [中心位置より反時計回りに20°（left_DR）回転した位置] ★逆に動くときはleft_DRの手前の符号をプラス（+）に
@@ -42,12 +46,12 @@ int right_max = center_pos + right_DR; //右ステアの最大位置 [中心位�
 /* スロットルの設定 */
 unsigned long mov_speed_TH = 0; //スロットル移動速度
 unsigned long mov_speed_brk = 40; //ブレーキ速度
-int neutral_pos = 91; //中立位置 [スロットルの中立位置 (90) ★ESCの設定によってずれがあるので、前後に走行しないよう値を調整する。※ ESC側を90で中立になるよう設定（上級者向け。ESCの説明書通りプロポでニュートラル設定を済ませてから、このプログラムの値を調整するのがオススメ）してもよい。]
+int neutral_pos = 93; //中立位置 [スロットルの中立位置 (90) ★ESCの設定によってずれがあるので、前後に走行しないよう値を調整する。※ ESC側を90で中立になるよう設定（上級者向け。ESCの説明書通りプロポでニュートラル設定を済ませてから、このプログラムの値を調整するのがオススメ）してもよい。]
 int forward_DR = 20; //前進の速さ ★好みの速度に調整
 int backward_DR = 20; //バックの速さ ★好みの速度に調整
 int forward_max = neutral_pos + forward_DR; //前進の最大位置 ★逆に動くときはforward_DRの手前の符号をマイナス（-）に
 int backward_max = neutral_pos - backward_DR; //バックの最大位置 ★逆に動くときはbackward_DRの手前の符号をプラス（+）に
-int turbo_speed = 180; //全開走行時の速度（180が最大。速すぎると思ったら170や160など値を小さくしてみる）
+int turbo_speed = 120; //全開走行時の速度（180が最大。速すぎると思ったら170や160など値を小さくしてみる）★好みの速度に調整
 
 /*値設定の注意点*/
 //速度(mov_speed_ST,mov_speed_TH)は 0-50 の範囲で与える。（0：最低速度、50:最大速度）
@@ -132,8 +136,8 @@ void setup() {
   pinMode(LED_PIN_ACTIVE, OUTPUT); //LEDの点灯ピンを出力用に設定
   Serial.begin(115200); //シリアルモニタで確認用
   ESP_BT.begin("ESP32_RC_Receiver"); //接続画面で表示される名前を設定 ★好きな名前にしてよい
-  myservo.attach(SERVO_PWM_PIN); //サーボモータのPWM端子とArduinoの4番ピンを接続 ★回路と対応した番号にする
-  myesc.attach(ESC_PWM_PIN); //ESCのPWM端子とArduinoの16番ピンを接続 ★回路と対応した番号にする
+  myservo.attach(SERVO_PWM_PIN,pulsew_min,pulsew_max); //サーボモータのPWM端子とArduinoの4番ピンを接続 ★回路と対応した番号にする
+  myesc.attach(ESC_PWM_PIN,pulsew_min,pulsew_max); //ESCのPWM端子とArduinoの16番ピンを接続 ★回路と対応した番号にする
 
   /*勝手には走りださないように設定*/
   myservo.write(center_pos); // ステアを中心(Center)に
