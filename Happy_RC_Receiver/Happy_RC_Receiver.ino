@@ -1,5 +1,5 @@
 /* Happy_RC_Receiver(version 7a) *****************************
-  Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/develop/Happy_RC_Driver.apk
+  Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
   ◆ 動作
