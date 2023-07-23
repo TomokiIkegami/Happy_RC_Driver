@@ -28,6 +28,10 @@ int num = 0;
 
 /*ライブラリ*/
 #include "BluetoothSerial.h"  //ESP32のBluetooth通信に使用
+#define PI 3.141592653589793 //円周率
+
+/*Bluetooth通信に必要*/
+BluetoothSerial ESP_BT;  //ESP_BTという名前でオブジェクトを定義
 
 /*ステアとスロットルの設定*/
 int PWM_period = 20000;  //PWM周期をT=20000[μs]に設定
@@ -38,6 +42,7 @@ int CH2 = neutral_pos;   //パルス幅Tonを1500[μs]（中立）に設定。
 
 /*プログラムの流れを制御する変数*/
 int flag = 0;  //アプリの起動状態を管理する変数。アプリがバックグラウンドに入ったときは1に設定する。アプリがバックグラウンドから復帰し、アプリのPボタンが押されたら0に設定してラジコン操作を有効にする。
+int i;                //カウンタ変数
 String input = "1500,1500";   //入力信号
 unsigned long t1 = 0;         //データ受信時間
 unsigned long t2 = 0;         //割り込み時の時間
@@ -48,8 +53,26 @@ unsigned long curr;           /*現在時刻を取得*/
 unsigned long prev_ST = 0;    /*前時刻を保存*/
 unsigned long prev_TH = 0;    /*前時刻を保存*/
 
-/*Bluetooth通信に必要*/
-BluetoothSerial ESP_BT;  //ESP_BTという名前でオブジェクトを定義
+/*パラメータ設定*/
+const int sense_pin = 25;  //★回路に合わせる。今回は25番ピンを使用。
+const double z1=14; //ベベルギアの歯数[枚]
+const double z2=38; //リングギアの歯数[枚]
+const double D=95; //タイヤの直径[mm]
+
+/*センサ関連の設定*/
+const int th = 3800;  //センサ閾値
+int val = 0;          //センサ出力値
+int output = 0;       //パルス出力（0/1）
+int y[50];            //パルス列を保存する配列
+int count = 0;        //パルスのカウント値
+
+/*速度計算関連の変数*/
+double f = 0;          //周波数[Hz]
+double v,v_kmh = 0;          //速度v:[m/s], 速度v_kmh:[km/h]
+int f_int = 0 ;       //周波数（整数）
+int v_kmh_int = 0 ;       //周波数（整数）
+uint8_t f_uint8 = 0;  //周波数（符号なし8bit[2byte]整数）
+uint8_t v_kmh_uint8 = 0;  //周波数（符号なし8bit[2byte]整数）
 
 /*割り込み関数onTimerで実行される内容*/
 void IRAM_ATTR onTimer() {
@@ -94,8 +117,42 @@ void split(String data, char delimiter, String *dst) {
 }
 void Task2(void *args){
   while(1){ // 無限ループ作成
-    delay(2000); // ウォッチドックを考慮して1[ms]待つ
-    num++;  //数字を1ずつ加算
+    /*フォトリフレクタから値を読み取り、パルスの生成*/
+    for (i = 0; i < 50; i++) { //0.01×50=0.5[s] 間隔で周波数を計算
+      val = analogRead(sense_pin);  //センサの値などを読む
+
+      /**パルス作成**/
+      if (val < th) { //センサの前にシャフトの目印が通過したらパルス値を1にする
+        output = 1;
+      } else {
+        output = 0;
+      }
+      y[i] = output;  //パルス出力値を保存
+      delay(10); //0.01[s] ごとに測定
+    }
+
+    /**パルス数計算*/
+    for (i = 0; i < 49; i++){ //0.01×50=0.5[s] 間隔で周波数を計算
+      if((y[i]^y[i+1])==1){
+        count++; //排他的論理和（EX-OR）でパルスの立ち上がり/立ち下がりを計算
+      }    
+    }
+
+    /*周波数の計算、スマホに値を送信*/
+    f=((double)count/2.0)*(1.0/0.5); //周波数f[Hz]を計算
+    v=(D*0.001/2.0)*2*PI*f*(z1/z2); //周波数から速度[m/s]を計算
+    v_kmh=v*3600/1000; //[m/s]から[km/h]に換算
+    v_kmh_int = (int)(v_kmh*10); //速度を整数値に変換（10倍してスケール速度に変換）
+    v_kmh_uint8 =  v_kmh_int; //速度を符号なし8bit整数に変換
+    ESP_BT.write(v_kmh_uint8); //速度をスマホに送信
+
+    f_int = (int)f; //周波数を整数に変換
+    f_uint8 = f_int; //周波数を符号なし8bit整数に変換
+    // Serial.print("f = "); Serial.print(f); Serial.print(" [Hz], "); //シリアルモニタに周波数（シャフト回転数）と速度を表示
+    // Serial.print("v_kmh = "); Serial.print(v_kmh); Serial.print(" [km/h]\n"); //シリアルモニタに周波数（シャフト回転数）と速度を表示
+    //ESP_BT.write(f_uint8); //周波数をスマホに送信ESP_BT.write(f_uint8); //周波数をスマホに送信
+
+    count=0; //カウント値をリセット
   }
 }
 
@@ -147,8 +204,8 @@ void loop() {
   }
 
   /*シリアルモニタで確認用（ラジコンの制御には無関係）*/
-  Serial.print("num=");
-  Serial.print(num);
+  Serial.print("v_kmh=");
+  Serial.print(v_kmh);
   Serial.print(",");
   Serial.print("Received signal=");
   Serial.print(input);
