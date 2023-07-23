@@ -22,6 +22,10 @@
 /*タイマーの定義*/
 hw_timer_t*timer = NULL;
 
+/*マルチタスクに使うタスクハンドルを定義*/
+TaskHandle_t thp[1]; // マルチスレッドのタスクハンドル格納用の変数（スレッドの数に応じて添え字の数を変更）
+int num = 0;
+
 /*ライブラリ*/
 #include "BluetoothSerial.h"  //ESP32のBluetooth通信に使用
 
@@ -88,6 +92,12 @@ void split(String data, char delimiter, String *dst) {
     }
   }
 }
+void Task2(void *args){
+  while(1){ // 無限ループ作成
+    delay(2000); // ウォッチドックを考慮して1[ms]待つ
+    num++;  //数字を1ずつ加算
+  }
+}
 
 void setup() {
   /*出力ピン設定*/
@@ -102,6 +112,9 @@ void setup() {
   timerAttachInterrupt(timer, &onTimer, true);  //onTimerという名前の関数で割り込み
   timerAlarmWrite(timer, 1000000 * 0.1, true);  //80クロック×1000000カウント=1秒、1*0.1=100[ms]
   timerAlarmEnable(timer);                      //タイマー有効化
+
+  /*マルチタスクの設定*/
+  xTaskCreatePinnedToCore(Task2,"Task2",4096,NULL,1,&thp[0],1); //(タスク名,"タスク名",スタックメモリサイズ,優先度(1~24),タスクハンドルのポインタ,コアID(0か1))
 }
 
 void loop() {
@@ -134,6 +147,9 @@ void loop() {
   }
 
   /*シリアルモニタで確認用（ラジコンの制御には無関係）*/
+  Serial.print("num=");
+  Serial.print(num);
+  Serial.print(",");
   Serial.print("Received signal=");
   Serial.print(input);
   Serial.print(",");
