@@ -1,5 +1,5 @@
-/* Happy_RC_Receiver(version 7a) *****************************
-  Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
+/* Happy_RC_Receiver(version 8a) *****************************
+  Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/develop/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
   ◆ 動作
@@ -171,7 +171,7 @@ void setup() {
   timerAlarmEnable(timer);                      //タイマー有効化
 
   /*マルチタスクの設定*/
-  xTaskCreatePinnedToCore(Task2,"Task2",4096,NULL,1,&thp[0],1); //(タスク名,"タスク名",スタックメモリサイズ,優先度(1~24),タスクハンドルのポインタ,コアID(0か1))
+  xTaskCreatePinnedToCore(Task2,"Task2",4096,NULL,1,&thp[0],0); //(タスク名,"タスク名",スタックメモリサイズ,優先度(1~24),タスクハンドルのポインタ,コアID(0か1))
 }
 
 void loop() {
