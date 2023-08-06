@@ -5,6 +5,7 @@
   ◆ 動作
   1.スマホアプリ(Happy_RC_Receiver)から命令（ステア、スロットルのパルス幅）を取得
   2.取得した命令に基づいて、RCを前後左右に操作
+  3.動作1,2と同時に、車速を計算してスマホに送信
   ◆ 機能
   ・アプリを開いていないときは、車体を停止させる安全機能を装備（Dragブレーキ付きESCを使用すること）
   ・アプリ再起動時には、スロットルを中立に戻さないと走行しない（アプリ再起動時に急に走行する危険を防ぐため）
@@ -42,16 +43,10 @@ int CH2 = neutral_pos;   //パルス幅Tonを1500[μs]（中立）に設定。
 
 /*プログラムの流れを制御する変数*/
 int flag = 0;  //アプリの起動状態を管理する変数。アプリがバックグラウンドに入ったときは1に設定する。アプリがバックグラウンドから復帰し、アプリのPボタンが押されたら0に設定してラジコン操作を有効にする。
-int i;                //カウンタ変数
 String input = "1500,1500";   //入力信号
 unsigned long t1 = 0;         //データ受信時間
 unsigned long t2 = 0;         //割り込み時の時間
 unsigned long td = 0;         //データ受信時間と割り込み時間の差
-unsigned long t_loss_ST = 0;  //ステア操作で失われた時間
-unsigned long t_loss_TH = 0;  //スロットル操作で失われた時間
-unsigned long curr;           /*現在時刻を取得*/
-unsigned long prev_ST = 0;    /*前時刻を保存*/
-unsigned long prev_TH = 0;    /*前時刻を保存*/
 
 /*パラメータ設定*/
 const int sense_pin = 25;  //★回路に合わせる。今回は25番ピンを使用。
@@ -67,11 +62,11 @@ int y[50];            //パルス列を保存する配列
 int count = 0;        //パルスのカウント値
 
 /*速度計算関連の変数*/
-double f = 0;          //周波数[Hz]
-double v,v_kmh = 0;          //速度v:[m/s], 速度v_kmh:[km/h]
-int f_int = 0 ;       //周波数（整数）
+double f = 0;             //周波数[Hz]
+double v,v_kmh = 0;       //速度v:[m/s], 速度v_kmh:[km/h]
+int f_int = 0 ;           //周波数（整数）
 int v_kmh_int = 0 ;       //周波数（整数）
-uint8_t f_uint8 = 0;  //周波数（符号なし8bit[2byte]整数）
+uint8_t f_uint8 = 0;      //周波数（符号なし8bit[2byte]整数）
 uint8_t v_kmh_uint8 = 0;  //周波数（符号なし8bit[2byte]整数）
 
 /*割り込み関数onTimerで実行される内容*/
@@ -116,6 +111,7 @@ void split(String data, char delimiter, String *dst) {
   }
 }
 void Task2(void *args){
+  int i;                //カウンタ変数
   while(1){ // 無限ループ作成
     /*フォトリフレクタから値を読み取り、パルスの生成*/
     for (i = 0; i < 50; i++) { //0.01×50=0.5[s] 間隔で周波数を計算
@@ -145,14 +141,15 @@ void Task2(void *args){
     v_kmh_int = (int)(v_kmh*10); //速度を整数値に変換（10倍してスケール速度に変換）
     v_kmh_uint8 =  v_kmh_int; //速度を符号なし8bit整数に変換
     ESP_BT.write(v_kmh_uint8); //速度をスマホに送信
+    count=0; //カウント値をリセット
 
-    f_int = (int)f; //周波数を整数に変換
-    f_uint8 = f_int; //周波数を符号なし8bit整数に変換
+    /* シャフト周波数や車速をシリアルモニタに表示 */
+    // f_int = (int)f; //周波数を整数に変換
+    // f_uint8 = f_int; //周波数を符号なし8bit整数に変換
     // Serial.print("f = "); Serial.print(f); Serial.print(" [Hz], "); //シリアルモニタに周波数（シャフト回転数）と速度を表示
     // Serial.print("v_kmh = "); Serial.print(v_kmh); Serial.print(" [km/h]\n"); //シリアルモニタに周波数（シャフト回転数）と速度を表示
-    //ESP_BT.write(f_uint8); //周波数をスマホに送信ESP_BT.write(f_uint8); //周波数をスマホに送信
+    // ESP_BT.write(f_uint8); //周波数をスマホに送信ESP_BT.write(f_uint8); //周波数をスマホに送信
 
-    count=0; //カウント値をリセット
   }
 }
 
