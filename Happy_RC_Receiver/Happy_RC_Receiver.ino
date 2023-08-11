@@ -1,5 +1,5 @@
 /* Happy_RC_Receiver(version 8a) *****************************
-  Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/develop/Happy_RC_Driver.apk
+  Download a Transmitter App:https://github.com/TomokiIkegami/Happy_RC_Driver/raw/main/Happy_RC_Driver.apk
   About this Project:https://github.com/TomokiIkegami/Happy_RC_Driver
 
   ◆ 動作
@@ -37,7 +37,7 @@ BluetoothSerial ESP_BT;  //ESP_BTという名前でオブジェクトを定義
 /*ステアとスロットルの設定*/
 int PWM_period = 20000;  //PWM周期をT=20000[μs]に設定
 int center_pos = 1500;   //ステア中心位置 [サーボモータ中心位置のパルス幅 (1500)]
-int neutral_pos = 1500;  //中立位置 [スロットル中立位置のパルス幅 (1500)
+int neutral_pos = 1500;  //中立位置 [スロットル中立位置のパルス幅 (1500)]
 int CH1 = center_pos;    //パルス幅Tonを1500[μs]（中立）に設定。データシートにはLeft=900[μs]、Neutral=1500[μs]、Right=2100[μs]と記載されていた。(HiTEC DB777WP)
 int CH2 = neutral_pos;   //パルス幅Tonを1500[μs]（中立）に設定。
 

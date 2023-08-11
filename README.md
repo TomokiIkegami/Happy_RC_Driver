@@ -29,6 +29,7 @@
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第10回-スライダ操作式のラジコンアプリに]](https://tomokiikegami.github.io/Happy_RC.github.io/2023/03/16/)
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第11回-接続状態表示のバグ修正]](https://tomokiikegami.github.io/Happy_RC.github.io/2023/04/03/)
 * [Bluetooth モジュールでRCサーボ・ESCを制御したい [第12回-アプリデザインに関するTips]](https://tomokiikegami.github.io/Happy_RC.github.io/2023/04/15/)
+* [Bluetooth モジュールでRCサーボ・ESCを制御したい [第13回-ラジコンアプリに車速を表示]](https://tomokiikegami.github.io/Happy_RC.github.io/2023/08/11/)
 
 # Installation
 　導入手順は[こちら](https://tomokiikegami.github.io/Happy_RC.github.io/2022/08/30/#6-%E4%BD%BF%E3%81%84%E6%96%B9)をご覧ください。
