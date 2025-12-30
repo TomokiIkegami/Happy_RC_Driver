@@ -162,10 +162,9 @@ void setup() {
 
   /*割り込み処理（アプリ停止の検知に必要）の設定*/
   pinMode(LED_PIN, OUTPUT);                     //LEDの点灯ピンを出力用に設定
-  timer = timerBegin(0, 80, true);              //80クロック1カウント
-  timerAttachInterrupt(timer, &onTimer, true);  //onTimerという名前の関数で割り込み
-  timerAlarmWrite(timer, 1000000 * 0.1, true);  //80クロック×1000000カウント=1秒、1*0.1=100[ms]
-  timerAlarmEnable(timer);                      //タイマー有効化
+  timer = timerBegin(1000000);              //周波数を1MHzに指定（1µs毎にカウントアップする）　※ ESP32 Core 2.x系 → 3.x系に伴い変更した
+  timerAttachInterrupt(timer, &onTimer);  //onTimerという名前の関数で割り込み
+  timerAlarm(timer, 100000, true, 0);  // (1/周波数)*カウント数=(1/1000000)*100000 = 0.1 [s]ごとに割り込みを発生 ※ ESP32 Core 2.x系 → 3.x系に伴い変更した
 
   /*マルチタスクの設定*/
   xTaskCreatePinnedToCore(Task2,"Task2",4096,NULL,1,&thp[0],0); //(タスク名,"タスク名",スタックメモリサイズ,優先度(1~24),タスクハンドルのポインタ,コアID(0か1))
